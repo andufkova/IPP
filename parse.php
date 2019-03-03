@@ -1,12 +1,18 @@
 <?php
+/**
+ * IPP project 2018/2019 - 1st task
+ * @author     Aneta Dufkova
+ */
 
 const PARAM_ERROR = 10;
 const HEADER_ERROR = 21;
 const OP_CODE_ERROR = 22;
 const OTHER_LEX_SEM_ERROR = 23;
 
-// classes and other stuff
 
+/**
+ * takes care of statistics (comments, jumps, etc.) - statp extension
+ */
 class Statistics{
     private $loc;
     private $comments;
@@ -75,6 +81,9 @@ class Statistics{
 
 }
 
+/**
+ * maintains reading from stdin, starts and finishes xml output
+ */
 class Scanner{
     private $inputLine;
     private $firstLine;
@@ -84,8 +93,7 @@ class Scanner{
 
     /**
      * Scanner constructor.
-     * @param $inputLine
-     * @param $firstLine
+     * @param $stats - statistics
      */
     public function __construct($stats){
         $this->inputLine= "";
@@ -97,21 +105,27 @@ class Scanner{
         $this->xmlGenerator->startDocument("1.0", "UTF-8");
         $this->xmlGenerator->setIndent(4);
         $this->ch = new Checker($stats, $this->xmlGenerator);
-
-
     }
 
+    /**
+     * reads input from stdin
+     */
     public function readInput(){
-
+        // read lines
+        $lines = 0;
         while($this->inputLine = fgets(STDIN)){
-            //echo $inputLine;
+            $lines++;
             $this->ch->checkLine($this->inputLine, $this->firstLine);
 
             if($this->firstLine == 1){
                 $this->firstLine--;
             }
         }
+        if($lines == 0){
+            exit(HEADER_ERROR);
+        }
 
+        // end of reading -> generate end of xml
         $this->xmlGenerator->endElement();
         $this->xmlGenerator->endDocument();
         $this->getXML();
@@ -119,14 +133,18 @@ class Scanner{
 
     }
 
-    public function getXML()
-    {
+    /**
+     * @return xml tree
+     */
+    public function getXML(){
         return $this->xmlGenerator->outputMemory();
     }
 
 }
 
-
+/**
+ * checks instructions and their arguments
+ */
 class Checker{
 
     private $instructions;
@@ -136,6 +154,8 @@ class Checker{
 
     /**
      * Checker constructor.
+     * @param $stats
+     * @param $xmlGenerator
      */
     public function __construct($stats, $xmlGenerator)
     {
@@ -203,11 +223,16 @@ class Checker{
     }
 
 
+    /**
+     * only check first line and then call other functions for checking
+     * @param $line - line loaded from stdin
+     * @param $firstLine - is 1 if it is first line of code (header)
+     */
     public function checkLine($line, $firstLine){
         if($firstLine == 1){
-            if(preg_match_all("/\s?[.]ippcode19\s?$/i", $line)){
+            if(preg_match("/\s?[.]ippcode19\s?$/i", $line)){
 
-            } else if(preg_match_all("/\s*[.]ippcode19\s*#?.*/i", $line)){
+            } else if(preg_match("/\s*[.]ippcode19\s*#?.*/i", $line)){
                 $this->stats->incComments();
             } else {
                 exit(HEADER_ERROR);
@@ -217,12 +242,12 @@ class Checker{
             $this->xmlGenerator->startElement('program');
             $this->xmlGenerator->writeAttribute("language","IPPcode19");
         } else {
-            // divide " "
             // extract # comments in the middle of row which dont begin with space
             if(strpos($line, "#") !== false && $line[0] != "#"){
                 $line = strstr($line, "#", true);
                 $this->stats->incComments();
             }
+            // divide " "
             $splitted = preg_split("/\s/", $line);
             $splitted = array_values(array_filter($splitted));
             if(count($splitted) != 0){
@@ -231,6 +256,10 @@ class Checker{
         }
     }
 
+    /**
+     * checks if instruction exists and validates its arguments
+     * @param $splitted - line of code splitted by space
+     */
     private function checkInstruction($splitted){
         $this->stats->incLoc();
         //first field - # or name of instruction
@@ -238,11 +267,10 @@ class Checker{
             // it s a comment, just let it be
             $this->stats->incComments();
         } else {
-            // otestuj, zda jde o platnou instrukci, jinak chyba
+            // chceck if instruction exists
             if(isset($this->instructions[strtolower($splitted[0])])){
                 // instruction found ! (y)
                 $this->incCounter();
-                //print_r($splitted);
                 // bonus stats counting
                 $testedString = strtolower($splitted[0]);
                 if($testedString == "label"){
@@ -253,7 +281,6 @@ class Checker{
                 // check arguments of instruction
                 $params = $this->instructions[strtolower($splitted[0])];
                 $paramsSplitted = preg_split("/\s/", $params);
-                //var_dump($paramsSplitted);
                 if(count($paramsSplitted) == count($splitted)-1 || $splitted[count($paramsSplitted)+1][0] == "#" || $paramsSplitted[0] == ""){
                     if($splitted[count($paramsSplitted)+1][0] == "#"){
                         $this->stats->incComments();
@@ -302,9 +329,14 @@ class Checker{
         }
     }
 
+    /**
+     * checks syntax of constant or variable
+     * @param $splitted - line of code splitted by space
+     * @param $i - order of argument in the instruction
+     */
     private function checkConstOrVariable($splitted, $i){
         if(preg_match_all("/^(L|G|T)F@([a-zA-Z]|_|-|\\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\\$|&|%|\*|!|\?)*$/", $splitted) ||
-            preg_match_all("/^(bool@true|bool@false|int@(\+|-)?[0-9]*|nil@nil|string@([^\s#\\\]|\\\[0-9][0-9][0-9])([^\s#\\\]|\\\[0-9][0-9][0-9])*)|string@$/", $splitted)){
+            preg_match_all("/^(bool@true|bool@false|int@(\+|-)?[0-9]*|nil@nil|string@([^\s#\\\]|\\\[0-9][0-9][0-9])([^\s#\\\]|\\\[0-9][0-9][0-9])*|string@)$/", $splitted)){
             // TODO: generate XML
             str_replace("&", "&amp;", $splitted);
             str_replace("<", "&lt;", $splitted);
@@ -324,6 +356,11 @@ class Checker{
         }
     }
 
+    /**
+     * checks syntax of variable
+     * @param $splitted - line of code splitted by space
+     * @param $i - order of argument in the instruction
+     */
     private function checkVariable($splitted, $i){
         if(preg_match_all("/^(L|G|T)F@([a-zA-Z]|_|-|\\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\\$|&|%|\*|!|\?)*$/", $splitted)){
             // TODO: generate XML
@@ -339,6 +376,11 @@ class Checker{
         }
     }
 
+    /**
+     * checks syntax of constant or label
+     * @param $splitted - line of code splitted by space
+     * @param $i - order of argument in the instruction
+     */
     private function checkLabel($splitted, $i){
         if(preg_match_all("/^([a-zA-Z]|_|-|\\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\\$|&|%|\*|!|\?)*$/", $splitted)){
             // TODO: generate XML
@@ -351,6 +393,11 @@ class Checker{
         }
     }
 
+    /**
+     * checks syntax of constant or type
+     * @param $splitted - line of code splitted by space
+     * @param $i - order of argument in the instruction
+     */
     private function checkType($splitted, $i){
         if($splitted == "int" || $splitted == "string" || $splitted == "bool"){
             // TODO: generate XML
@@ -379,11 +426,7 @@ $longOpts = array(
 );
 
 $options = getopt($shortOpts, $longOpts);
-//var_dump($options);
 
-//var_dump($argc);
-
-$sLoc = 0;
 
 if(isset($options["help"]) && $argc == 2){
     // doesnt make sense to use help and other args
@@ -427,7 +470,7 @@ elseif (($argc == 1 && empty($options)) || (!empty($options) && isset($options["
     $scan->readInput();
 
 
-    // write stats if necessary
+    // write stats to a file if necessary
     if(isset($options["stats"])){
         $file = fopen($outputFile, "w") or exit(12);
         for($i = 2; $i < $argc; $i++){
