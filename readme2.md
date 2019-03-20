@@ -23,9 +23,8 @@ Spoustu práce mi ušetřily některé konstrukce a nástroje jazyka Python, nap
 - lists - pracuji s nimi jako se zásobníkem a využívám pro zásobník rámců, volání i programový zásobník
 - slices - hodilo se u instrukcí pro práci s řetězci, jako jsou `getchar` či `setchar`
 
-### Zajímavosti z řešení
-Kontrolu instrukcí jsem řešila prostřednictvím pole typu klíč - hodnota.  
-Vytvořila jsem si pole, kde klíčem byl název instrukce a hodnotou reprezentace jejích parametrů. Například:  
-`$this->instructions = ["move" => "v s", "pops" => "v", "add" => "v s s", ...]`,  
-kde v značí \<var\>, s značí \<symb\> atd.  
-Pak mi tedy stačilo zjistit, zda je v poli povolených instrukcí klíč s hodnotou právě kontrolované instrukce. Pokud ano, vytáhla jsem si z pole hodnotu, rozdělila ji podle bílých znaků a v cyklu pak zkontrolovala jednotlivé parametry přes regulární výraz.
+### Rozšíření STATI
+Pro zjištění maximálního počtu inicializovnaných proměnných se při každé inicializaci dívám, jestli je počet větší než doposud zjištěné maximum. Vykonané instrukce počítám při každé nově načtené a rozpoznané instrukci.
+
+## test.php
+Projekt byl vypracován v souladu s verzí PHP7.3 ve vývojovém prostředí PhpStorm.
